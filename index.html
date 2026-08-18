@@ -23,13 +23,13 @@ svg{width:100%;height:auto;display:block;background:white;border:1px solid #e2e7
 .piece{fill:white;stroke:#182033;stroke-width:2}
 .edgeText{font-size:11px;font-weight:bold;text-anchor:middle;dominant-baseline:middle}
 @media(max-width:800px){.grid{grid-template-columns:1fr}}
-@media print{header,.bar,.editor,.tabs,#status,.notice{display:none!important}.grid{display:block}body,main,.card{margin:0;padding:0;border:0;background:white}svg{border:0}}
+@page{size:Letter portrait;margin:.35in}@media print{header,.bar,.editor,.tabs,#status,.notice{display:none!important}.grid{display:block}body,main,.card{margin:0;padding:0;border:0;background:white}svg{border:0}}
 </style>
 </head>
 <body>
 <main>
 <header><h1>Will's Tarsia Builder</h1><p class="sub">Automatically sizes a triangular Tarsia to fit your matching pairs.</p></header>
-<div class="bar"><button id="paste">Paste list</button><button id="add">+ Add pair</button><button id="demo">Load demo</button><button id="shuffle">Reshuffle cut sheet</button><button id="print" class="primary">Print / Save PDF</button></div>
+<div class="bar"><button id="paste">Paste list</button><button id="add">+ Add pair</button><button id="demo">Restore example</button><button id="shuffle">Reshuffle cut sheet</button><button id="print" class="primary">Print / Save PDF</button></div>
 <div class="grid">
 <section class="card editor"><div class="head"><h2>Matching pairs</h2><span id="count" class="muted"></span></div><div class="notice">Each completed pair is placed on opposite sides of one shared edge.</div><div id="rows"></div></section>
 <section class="card"><div class="head"><h2>Preview</h2><strong id="sizeLabel"></strong></div><div class="tabs"><button id="solved" class="active">Solved / answer key</button><button id="cut">Printable cut pieces</button></div><svg id="svg" viewBox="0 0 820 740"></svg><p id="status"></p></section>
@@ -38,21 +38,21 @@ svg{width:100%;height:auto;display:block;background:white;border:1px solid #e2e7
 <script>
 const $=s=>document.querySelector(s),R=$("#rows"),S=$("#svg");
 const DEMO=[["7 × 8","56"],["H₂O","Water"],["NaCl","Sodium chloride"],["3²","9"],["Mitochondria","Produces ATP"],["Cell","Basic unit of life"],["12 ÷ 3","4"],["5 + 6","11"],["CO₂","Carbon dioxide"]];
-let P=JSON.parse(localStorage.getItem("wtb-pairs")||"null")||DEMO.map(x=>[...x]),mode="solved",seed=1;
+let P=DEMO.map(x=>[...x]),mode="solved",seed=1;
 const E=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const valid=()=>P.filter(p=>p[0].trim()&&p[1].trim());
-function save(){localStorage.setItem("wtb-pairs",JSON.stringify(P))}
+function save(){}
 function rows(){R.innerHTML=P.map((p,i)=>`<div class="row"><input data-i="${i}" data-k="0" value="${E(p[0])}" placeholder="Term"><input data-i="${i}" data-k="1" value="${E(p[1])}" placeholder="Match"><button data-r="${i}">×</button></div>`).join("");$("#count").textContent=valid().length+" pairs";draw()}
 R.oninput=e=>{if(e.target.dataset.i!=null){P[+e.target.dataset.i][+e.target.dataset.k]=e.target.value;save();$("#count").textContent=valid().length+" pairs";draw()}};
 R.onclick=e=>{if(e.target.dataset.r!=null){P.splice(+e.target.dataset.r,1);if(!P.length)P.push(["",""]);save();rows()}};
 $("#add").onclick=()=>{P.push(["",""]);save();rows()};
 $("#demo").onclick=()=>{P=DEMO.map(x=>[...x]);save();rows()};
-$("#paste").onclick=()=>{let t=prompt("Paste one pair per line using term | match. Tabs from Sheets/Excel also work.");if(!t)return;let a=t.split(/\r?\n/).filter(x=>x.trim()).map(x=>{let q=x.includes("\t")?x.split("\t"):x.split("|");return[(q.shift()||"").trim(),q.join("|").trim()]});if(a.length){P=a;save();rows()}};
+$("#paste").onclick=()=>{let t=prompt("PASTE / IMPORT PAIRS\n\nQuizlet: open your flashcard set, choose Export, copy the exported terms and definitions, then paste them here.\n\nGoogle Sheets / Excel: copy two columns and paste them here.\n\nPlain text: use term | match, one pair per line.\n\nTab-separated exports are detected automatically.");if(!t)return;let a=t.split(/\r?\n/).filter(x=>x.trim()).map(x=>{let q=x.includes("\t")?x.split("\t"):x.split("|");return[(q.shift()||"").trim(),q.join("|").trim()]});if(a.length){P=a;save();rows()}};
 $("#shuffle").onclick=()=>{seed++;mode="cut";tabs();draw()};$("#print").onclick=()=>window.print();
 $("#solved").onclick=()=>{mode="solved";tabs();draw()};$("#cut").onclick=()=>{mode="cut";tabs();draw()};
 function tabs(){$("#solved").classList.toggle("active",mode==="solved");$("#cut").classList.toggle("active",mode==="cut")}
 function cap(n){return 3*n*(n-1)/2}function sizeFor(k){let n=2;while(cap(n)<k&&n<10)n++;return n}
-function vertex(r,c,n){let side=Math.min(165,650/n),h=side*Math.sqrt(3)/2;return[410+(c-r/2)*side,45+r*h]}
+function vertex(r,c,n){let side=760/n,h=side*Math.sqrt(3)/2;return[410+(c-r/2)*side,32+r*h]}
 function makePieces(n){let a=[];for(let r=0;r<n;r++)for(let c=0;c<=r;c++){a.push({v:[vertex(r,c,n),vertex(r+1,c,n),vertex(r+1,c+1,n)]});if(c<r)a.push({v:[vertex(r,c,n),vertex(r,c+1,n),vertex(r+1,c+1,n)]})}return a}
 function edgeKey(a,b){let A=a.map(x=>x.toFixed(3)).join(","),B=b.map(x=>x.toFixed(3)).join(",");return A<B?A+"|"+B:B+"|"+A}
 function links(ps){let m=new Map();ps.forEach((p,pi)=>p.v.forEach((a,e)=>{let k=edgeKey(a,p.v[(e+1)%3]);if(!m.has(k))m.set(k,[]);m.get(k).push({pi,e})}));return[...m.values()].filter(x=>x.length===2)}
